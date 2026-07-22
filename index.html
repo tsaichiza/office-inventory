@@ -200,7 +200,7 @@
   }
   .tag-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);}
   .btn-ghost{
-    background:transparent;border:1.5px solid var(--line);color:var(--ink-soft);border-radius:9px;
+    background:transparent;border:1.5px solid var(--line);color:var(--ink-soft);border-radius:99px;
     padding:9px 16px;font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;
   }
 
@@ -246,7 +246,6 @@
     opacity:0;transition:.25s;pointer-events:none;z-index:999;box-shadow:0 8px 20px rgba(0,0,0,.2);
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-  .footer-note{text-align:center;font-size:11px;color:var(--muted);margin-top:24px;}
 </style>
 </head>
 <body>
@@ -309,20 +308,15 @@
           <div class="submit-count">已勾選 <b id="checkedCount">0</b> 項</div>
           <button class="btn-primary" id="btnSubmit" disabled>送出盤點資料至雲端</button>
         </div>
-        <div id="submitBlockReason" style="display:none;font-size:12px;color:var(--red);background:var(--red-light);padding:8px 10px;border-radius:8px;"></div>
       </div>
     </div>
   </div>
 
   <!-- ADMIN VIEW -->
   <div class="view" id="view-admin">
-    <div class="stats-row" id="statsRow"></div>
     <div class="card" style="padding:14px 16px;">
       <div class="toolbar">
         <input type="text" class="search" id="searchBox" placeholder="搜尋品項 / 保管人 / 編碼…">
-        <div class="spacer"></div>
-        <button class="btn-export csv" id="btnExportCsv">⭳ 匯出 CSV</button>
-        <button class="btn-export xlsx" id="btnExportXlsx">⭳ 匯出 Excel</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -350,7 +344,9 @@
 
 <div class="toast" id="toast"></div>
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxzp7nTMZiP7jE2WeIPU76cvA5z85LKWSPmNziT1nMFAuZt7r8_vBK5j22EaWcupuuW-Q/exec';
+<script>
+// 已填入你的專屬 Google Apps Script 網址
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxzp7nTMZiP7jE2WelPU76cvA5z85LKWSPmNziT1nMFAuZt7r8_vBK5j22EaWcupuuW-Q/exec';
 
 const OFFICES = [
   {code:'HQ',    name:'協會總部', addr:'新北市永和區永樂里自由街55號9樓'},
