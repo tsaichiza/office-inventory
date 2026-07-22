@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多辦公室物資盤點系統</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#1F2D2A;
+    --ink-soft:#4B5A56;
+    --muted:#8A9591;
+    --paper:#F2F5F3;
+    --card:#FFFFFF;
+    --line:#DFE6E2;
+    --teal:#2F7C6E;
+    --teal-dark:#1F5C51;
+    --teal-light:#E6F1EE;
+    --amber:#DE9A4C;
+    --amber-light:#FBEEDD;
+    --red:#C1543F;
+    --red-light:#FBECE9;
+    --radius:14px;
+    --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', 'Heiti TC', 'Noto Sans TC', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--sans);
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:1080px;margin:0 auto;padding:20px 16px 80px;}
+
+  /* Header */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 4px 18px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-mark{
+    width:34px;height:34px;border-radius:99px;
+    background:var(--teal);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:900;font-size:15px;flex-shrink:0;
+  }
+  .brand-text h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.2px;}
+  .brand-text p{font-size:11.5px;margin:1px 0 0;color:var(--muted);}
+
+  .tabs{
+    display:flex;gap:4px;background:var(--card);border:1px solid var(--line);
+    border-radius:999px;padding:4px;
+  }
+  .tab-btn{
+    border:none;background:transparent;padding:8px 16px;border-radius:999px;
+    font-family:var(--sans);font-size:13px;font-weight:700;color:var(--ink-soft);
+    cursor:pointer;transition:.15s;white-space:nowrap;
+  }
+  .tab-btn.active{background:var(--teal);color:#fff;}
+
+  .subtabs{display:flex;gap:8px;margin-bottom:14px;}
+  .subtab-btn{
+    border:1.5px solid var(--line);background:#fff;color:var(--ink-soft);
+    padding:8px 16px;border-radius:10px;font-family:var(--sans);font-size:13px;font-weight:700;
+    cursor:pointer;transition:.15s;
+  }
+  .subtab-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  .lookup-card{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;
+  }
+  .lookup-card-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin-bottom:10px;}
+  .lookup-title{font-size:13.5px;font-weight:700;}
+  .lookup-meta{font-family:var(--mono);font-size:11px;color:var(--muted);}
+  .lookup-fields{display:flex;flex-wrap:wrap;gap:8px;}
+  .lookup-fields .custodian-wrap{flex:1;min-width:160px;}
+  .lookup-fields .location-input{flex:1;min-width:140px;}
+  .lookup-fields .condition-select{min-width:120px;}
+  .lookup-save-hint{font-size:11px;color:var(--teal-dark);margin-top:6px;opacity:0;transition:.2s;}
+  .lookup-save-hint.show{opacity:1;}
+
+  .view{display:none;}
+  .view.active{display:block;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;margin-bottom:14px;
+  }
+  .card h2{font-size:14px;margin:0 0 4px;font-weight:700;}
+  .card .hint{font-size:12px;color:var(--muted);margin:0 0 14px;}
+
+  /* office select */
+  select{
+    width:100%;font-family:var(--sans);font-size:15px;padding:12px 14px;
+    border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--ink);
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%234B5A56' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 14px center;
+  }
+  select:focus, input:focus, textarea:focus{outline:2px solid var(--teal);outline-offset:1px;}
+  .office-addr{font-size:12px;color:var(--muted);margin-top:8px;padding:8px 10px;background:var(--paper);border-radius:8px;}
+
+  /* item checklist */
+  .cat-group{margin-top:16px;}
+  .cat-title{
+    display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;
+    color:var(--teal-dark);text-transform:uppercase;letter-spacing:.5px;
+    padding-bottom:6px;margin-bottom:8px;border-bottom:1px dashed var(--line);
+  }
+  .cat-code-badge{
+    font-family:var(--mono);font-size:10px;background:var(--teal-light);color:var(--teal-dark);
+    padding:2px 7px;border-radius:5px;font-weight:600;letter-spacing:.5px;
+  }
+  .item-row{
+    border:1.5px solid var(--line);border-radius:10px;margin-bottom:8px;
+    background:#fff;overflow:hidden;transition:.15s;
+  }
+  .item-row.checked{border-color:var(--teal);background:var(--teal-light);}
+  .item-row-head{
+    display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;
+  }
+  .item-row input[type=checkbox]{
+    width:20px;height:20px;flex-shrink:0;accent-color:var(--teal);cursor:pointer;
+  }
+  .item-row-head label{font-size:14.5px;font-weight:500;flex:1;cursor:pointer;}
+  .item-detail{
+    display:none;padding:0 14px 14px 44px;flex-direction:column;gap:10px;
+  }
+  .item-row.checked .item-detail{display:flex;}
+  .detail-row-top{display:flex;flex-wrap:wrap;gap:10px;width:100%;}
+  .custodian-list{display:flex;flex-direction:column;gap:10px;width:100%;}
+  .custodian-unit-row{
+    display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;
+    background:var(--paper);border-radius:10px;padding:8px;
+  }
+  .custodian-unit-row .unit-tag{
+    font-family:var(--mono);font-size:10.5px;color:var(--teal-dark);background:var(--teal-light);
+    width:26px;height:38px;flex-shrink:0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;
+  }
+  .unit-fields{display:flex;flex-wrap:wrap;gap:8px;flex:1;min-width:220px;}
+  .unit-fields .custodian-wrap{flex:1;min-width:170px;}
+  .unit-fields .location-input{flex:1;min-width:140px;}
+  .unit-fields .condition-select{min-width:120px;}
+  .field-mini{display:flex;flex-direction:column;gap:4px;}
+  .field-mini label{font-size:10.5px;color:var(--ink-soft);font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+  .qty-control{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;height:38px;}
+  .qty-control button{
+    width:32px;height:100%;border:none;background:var(--paper);font-size:16px;font-weight:700;
+    cursor:pointer;color:var(--ink-soft);
+  }
+  .qty-control input{
+    width:44px;border:none;text-align:center;font-family:var(--mono);font-size:14px;height:100%;
+    -moz-appearance:textfield;
+  }
+  .qty-control input::-webkit-outer-spin-button,.qty-control input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .custodian-wrap{display:flex;gap:6px;flex:1;min-width:180px;}
+  .custodian-wrap input{
+    flex:1;border:1.5px solid var(--line);border-radius:8px;padding:0 10px;height:38px;
+    font-family:var(--sans);font-size:13.5px;
+  }
+  .btn-public{
+    border:1.5px solid var(--amber);background:var(--amber-light);color:#8a5a1e;
+    border-radius:8px;padding:0 10px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;height:38px;
+  }
+  .btn-public.on{background:var(--amber);color:#fff;}
+  .mini-input{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:0 10px;height:38px;font-family:var(--sans);font-size:13.5px;background:#fff;color:var(--ink);}
+
+  /* submit bar */
+  .submit-bar{
+    position:sticky;bottom:0;left:0;right:0;background:linear-gradient(180deg,transparent,var(--paper) 30%);
+    padding:14px 0 4px;margin-top:6px;
+  }
+  .submit-bar-inner{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:12px 16px;box-shadow:0 8px 24px rgba(31,45,42,.08);
+  }
+  .submit-count{font-size:13px;color:var(--ink-soft);}
+  .submit-count b{color:var(--teal-dark);font-family:var(--mono);}
+  .btn-primary{
+    background:var(--teal);color:#fff;border:none;border-radius:10px;padding:12px 22px;
+    font-family:var(--sans);font-size:14.5px;font-weight:700;cursor:pointer;transition:.15s;
+  }
+  .btn-primary:disabled{background:var(--line);color:var(--muted);cursor:not-allowed;}
+  .btn-primary:not(:disabled):hover{background:var(--teal-dark);}
+
+  /* success panel */
+  .success-panel{display:none;}
+  .success-panel.show{display:block;}
+  .success-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .success-icon{width:36px;height:36px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+  .tag-chip{
+    display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12.5px;
+    border:1.5px dashed var(--teal);background:var(--teal-light);color:var(--teal-dark);
+    padding:5px 10px 5px 8px;border-radius:7px;margin:3px 4px 3px 0;font-weight:600;
+  }
+  .tag-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);}
+  .btn-ghost{
+    background:transparent;border:1.5px solid var(--line);color:var(--ink-soft);border-radius:9px;
+    padding:9px 16px;font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;
+  }
+
+  /* admin view */
+  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;}
+  .stat-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+  .stat-card .num{font-family:var(--mono);font-size:22px;font-weight:600;color:var(--teal-dark);}
+  .stat-card .lbl{font-size:11.5px;color:var(--muted);margin-top:2px;}
+
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;}
+  .toolbar select,.toolbar input[type=text]{
+    width:auto;min-width:140px;padding:9px 12px;font-size:13px;border-radius:9px;
+    border:1.5px solid var(--line);background:#fff;font-family:var(--sans);
+  }
+  .toolbar .search{flex:1;min-width:160px;}
+  .spacer{flex:1;}
+  .btn-export{
+    display:inline-flex;align-items:center;gap:6px;background:var(--ink);color:#fff;border:none;
+    border-radius:9px;padding:9px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:var(--sans);
+  }
+  .btn-export.csv{background:var(--teal);}
+  .btn-export.xlsx{background:var(--amber);color:#5a3813;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:12px;overflow:hidden;border:1px solid var(--line);}
+  thead th{
+    background:var(--ink);color:#fff;text-align:left;padding:10px 12px;font-size:11.5px;
+    text-transform:uppercase;letter-spacing:.4px;font-weight:700;position:sticky;top:0;cursor:pointer;user-select:none;
+  }
+  thead th:hover{background:var(--teal-dark);}
+  tbody td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:middle;}
+  tbody tr:hover{background:var(--paper);}
+  .code-cell{font-family:var(--mono);font-weight:600;color:var(--teal-dark);white-space:nowrap;}
+  .cat-pill{
+    font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--teal-light);
+    color:var(--teal-dark);white-space:nowrap;
+  }
+  .edit-input{border:1px solid transparent;background:transparent;font-family:var(--sans);font-size:13px;width:100%;padding:3px 5px;border-radius:5px;}
+  .table-wrap{overflow-x:auto;border-radius:12px;}
+  .empty-state{text-align:center;padding:50px 20px;color:var(--muted);font-size:13px;}
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;
+    opacity:0;transition:.25s;pointer-events:none;z-index:999;box-shadow:0 8px 20px rgba(0,0,0,.2);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .footer-note{text-align:center;font-size:11px;color:var(--muted);margin-top:24px;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">物</div>
+      <div class="brand-text">
+        <h1>多辦公室物資盤點系統</h1>
+        <p>資料即時同步至雲端試算表</p>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" data-view="input">填寫盤點</button>
+      <button class="tab-btn" data-view="admin">後台總覽</button>
+    </div>
+  </div>
+
+  <!-- INPUT VIEW -->
+  <div class="view active" id="view-input">
+    <div class="card">
+      <h2>1. 選擇辦公室 · 填寫人</h2>
+      <p class="hint">請選擇本次盤點的辦公室據點，並填寫你的姓名</p>
+      <select id="officeSelect">
+        <option value="">請選擇辦公室…</option>
+      </select>
+      <div class="office-addr" id="officeAddr" style="display:none;"></div>
+      <div style="margin-top:10px;">
+        <label style="font-size:11.5px;color:var(--ink-soft);font-weight:700;display:block;margin-bottom:4px;">填寫人姓名</label>
+        <input type="text" id="reporterName" class="mini-input" placeholder="請輸入你的姓名…">
+      </div>
+    </div>
+
+    <div class="card" id="itemsCard" style="display:none;">
+      <h2>2. 勾選品項 · 填寫數量與保管人</h2>
+      <p class="hint">勾選後直接在下方填入數量與保管人，若為公用物品可點「設為公用」</p>
+      <div id="itemsContainer"></div>
+    </div>
+
+    <div class="success-panel" id="successPanel">
+      <div class="card">
+        <div class="success-head">
+          <div class="success-icon">✓</div>
+          <div>
+            <h2 style="margin:0;">已成功上傳雲端！共新增 <span id="successCount">0</span> 筆盤點紀錄</h2>
+            <p class="hint" style="margin:2px 0 0;">系統自動生成的編碼如下：</p>
+          </div>
+        </div>
+        <div id="successTags"></div>
+        <div style="margin-top:14px;">
+          <button class="btn-ghost" id="btnAddMore">繼續盤點此辦公室</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="submit-bar" id="submitBar" style="display:none;">
+      <div class="submit-bar-inner" style="flex-direction:column;align-items:stretch;gap:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div class="submit-count">已勾選 <b id="checkedCount">0</b> 項</div>
+          <button class="btn-primary" id="btnSubmit" disabled>送出盤點資料至雲端</button>
+        </div>
+        <div id="submitBlockReason" style="display:none;font-size:12px;color:var(--red);background:var(--red-light);padding:8px 10px;border-radius:8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN VIEW -->
+  <div class="view" id="view-admin">
+    <div class="stats-row" id="statsRow"></div>
+    <div class="card" style="padding:14px 16px;">
+      <div class="toolbar">
+        <input type="text" class="search" id="searchBox" placeholder="搜尋品項 / 保管人 / 編碼…">
+        <div class="spacer"></div>
+        <button class="btn-export csv" id="btnExportCsv">⭳ 匯出 CSV</button>
+        <button class="btn-export xlsx" id="btnExportXlsx">⭳ 匯出 Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>編碼</th>
+              <th>類別</th>
+              <th>辦公室</th>
+              <th>品項</th>
+              <th>數量</th>
+              <th>保管人</th>
+              <th>地點</th>
+              <th>狀況</th>
+              <th>填寫人</th>
+              <th>建立時間</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="emptyState" style="display:none;">目前雲端尚無盤點資料</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+https://script.google.com/macros/s/AKfycbxzp7nTMZIp7jE2WeIPU76cvA5z85LKWSPmNziTlnMFAuZt7r8_vBK5j22EaWcupuuW-Q/exec
+// ⚠️ 請在此處貼上你從 第一階段 (Apps Script 部署) 取得的 API 網址：
+const GAS_URL = 'https://script.google.com/macros/s/你的GAS網址/exec';
+
+const OFFICES = [
+  {code:'HQ',    name:'協會總部', addr:'新北市永和區永樂里自由街55號9樓'},
+  {code:'YH1',   name:'永和據點', addr:'新北市永和區文化路155號'},
+  {code:'YH2',   name:'永和據點 A個管辦公室', addr:'新北市永和區永和路二段116號4樓'},
+  {code:'ZH',    name:'中和據點 永樂居', addr:'新北市中和區南山路127巷21號1樓'},
+  {code:'YEN',   name:'永恩小作所', addr:'新北市永和區中和路409號3樓'},
+  {code:'TPE',   name:'台北據點', addr:'台北市文山區羅斯福路六段134號2樓'},
+  {code:'KLG',   name:'基隆據點', addr:'基隆市中正區中正路12-4號2樓'},
+  {code:'TYN',   name:'桃園據點', addr:'桃園市桃園區南華街60號9樓之3'},
+  {code:'HC',    name:'新竹據點', addr:'新竹市香山區中華路五段672號2樓'},
+  {code:'TXG',   name:'台中據點', addr:'台中市東區復興路四段80號5樓'},
+  {code:'CHA',   name:'彰化據點', addr:'彰化縣員林市員鹿路22號'},
+  {code:'CYI1',  name:'嘉義據點', addr:'嘉義縣布袋鎮光復路二段103號'},
+  {code:'CYI2',  name:'嘉義據點 A個管辦公室', addr:'嘉義縣東石鄉西崙村栗子崙613號'},
+  {code:'TNN',   name:'台南據點', addr:'台南市新營區民族路7號'},
+  {code:'KHH',   name:'高雄據點', addr:'高雄市鳳山區鳳東七街172號'},
+  {code:'YIL',   name:'宜蘭據點', addr:'宜蘭縣礁溪鄉育英路40號'},
+  {code:'HUL',   name:'花蓮據點', addr:'花蓮縣花蓮市中山路719號'},
+  {code:'YULI',  name:'玉里據點', addr:'花蓮縣玉里鎮中山路一段45號1樓'},
+  {code:'HH',    name:'好好辦公室', addr:'新北市永和區福和路330號'},
+  {code:'HHVZH', name:'好好動物醫院 中和院', addr:'新北市中和區中和路464號'},
+  {code:'ZHO',   name:'中和辦公室', addr:'新北市中和區中和路464號2樓'},
+  {code:'HHVSC', name:'好好動物醫院 三重院', addr:'新北市三重區文化北路59號1樓'},
+  {code:'CXMYH', name:'寵蝦咪 永和店', addr:'新北市永和區福和路330號'},
+  {code:'CXMWS', name:'寵蝦咪 文山店', addr:'台北市文山區興隆路一段261號1樓'},
+  {code:'CXMSC', name:'寵蝦咪 三重店', addr:'新北市三重區文化北路59號1樓'},
+  {code:'YMJ1',  name:'永美家居（1樓）', addr:'新北市永和區永樂里自由街55號1樓'},
+  {code:'YMJ2',  name:'永美家居（2樓）', addr:'新北市永和區永樂里自由街55號2樓'},
+  {code:'YLST',  name:'永樂食堂', addr:'新北市中和區永貞路251號'},
+];
+
+const CATEGORIES = [
+  {code:'COMP', name:'電腦類', items:[{code:'NB',name:'筆電'},{code:'PC',name:'桌上型電腦主機'},{code:'MNT',name:'電腦螢幕'},{code:'TAB',name:'平板電腦'}]},
+  {code:'AV', name:'影音類', items:[{code:'TV',name:'電視'},{code:'PROJ',name:'投影機'},{code:'SPK',name:'喇叭'}]},
+  {code:'COMM', name:'通訊類', items:[{code:'PHONE',name:'公務手機'},{code:'TEL',name:'市內電話'},{code:'WIFI',name:'網路訊號增強器'}]},
+  {code:'OFF', name:'辦公設備', items:[{code:'COPY',name:'影印機'},{code:'LAM',name:'護貝機'},{code:'SHRD',name:'碎紙機'},{code:'LABEL',name:'標籤機'}]},
+  {code:'CCTV', name:'監視設備', items:[{code:'CAM',name:'監視器'},{code:'DVR',name:'監視器主機'},{code:'CMNT',name:'監視器螢幕'}]},
+  {code:'APPL', name:'家電類', items:[{code:'COFFEE',name:'咖啡機'},{code:'AC',name:'冷氣'},{code:'FRIDGE',name:'冰箱'},{code:'FAN',name:'電風扇'},{code:'DEHUM',name:'除濕機'},{code:'AIR',name:'空氣清新機'},{code:'VAC',name:'吸塵器'},{code:'WATER',name:'飲水機'},{code:'MICRO',name:'微波爐'},{code:'RICE',name:'電鍋'}]},
+  {code:'MED', name:'醫療器材', items:[{code:'BED',name:'醫療床'},{code:'BP',name:'血壓機'}]},
+  {code:'OTH', name:'其他', items:[{code:'OTH',name:'其他（請填寫品名）'}]}
+];
+
+const OFFICE_MAP = Object.fromEntries(OFFICES.map(o=>[o.code,o]));
+const CAT_MAP = Object.fromEntries(CATEGORIES.map(c=>[c.code,c]));
+
+let checkedState = {};
+let allRecords = [];
+
+const officeSelect = document.getElementById('officeSelect');
+OFFICES.forEach(o=>{
+  const opt = document.createElement('option');
+  opt.value = o.code; opt.textContent = `${o.name}（代碼 ${o.code}）`;
+  officeSelect.appendChild(opt);
+});
+
+const itemsCard = document.getElementById('itemsCard');
+const itemsContainer = document.getElementById('itemsContainer');
+const officeAddr = document.getElementById('officeAddr');
+const submitBar = document.getElementById('submitBar');
+
+officeSelect.addEventListener('change', ()=>{
+  const office = OFFICE_MAP[officeSelect.value];
+  if(!office){ itemsCard.style.display='none'; submitBar.style.display='none'; officeAddr.style.display='none'; return; }
+  officeAddr.textContent = '📍 ' + office.addr;
+  officeAddr.style.display = 'block';
+  itemsCard.style.display = 'block';
+  submitBar.style.display = 'flex';
+  buildItemChecklist();
+});
+
+function buildItemChecklist(){
+  itemsContainer.innerHTML = '';
+  checkedState = {};
+  CATEGORIES.forEach(cat=>{
+    const group = document.createElement('div');
+    group.className = 'cat-group';
+    group.innerHTML = `<div class="cat-title">${cat.name} <span class="cat-code-badge">${cat.code}</span></div>`;
+    cat.items.forEach(item=>{
+      const key = cat.code+':'+item.code;
+      const row = document.createElement('div');
+      row.className = 'item-row'; row.id = 'row-'+key;
+      row.innerHTML = `
+        <div class="item-row-head">
+          <input type="checkbox" id="chk-${key}" data-key="${key}">
+          <label for="chk-${key}">${item.name}</label>
+        </div>
+        <div class="item-detail">
+          <div class="detail-row-top">
+            <div class="field-mini">
+              <label>數量</label>
+              <div class="qty-control">
+                <button type="button" class="qty-minus" data-key="${key}">−</button>
+                <input type="number" min="1" value="1" data-key="${key}" class="qty-input">
+                <button type="button" class="qty-plus" data-key="${key}">＋</button>
+              </div>
+            </div>
+          </div>
+          <div class="custodian-list" id="custodian-list-${key}"></div>
+        </div>`;
+      group.appendChild(row);
+    });
+    itemsContainer.appendChild(group);
+  });
+  attachItemHandlers();
+  updateSubmitState();
+}
+
+function renderCustodianRows(key){
+  const s = checkedState[key]; if(!s) return;
+  while(s.custodians.length < s.qty){ s.custodians.push(''); s.locations.push(''); s.conditions.push('正常使用'); }
+  while(s.custodians.length > s.qty){ s.custodians.pop(); s.locations.pop(); s.conditions.pop(); }
+
+  const list = document.getElementById('custodian-list-'+key); if(!list) return;
+  list.innerHTML = s.custodians.map((val,idx)=>`
+    <div class="custodian-unit-row">
+      <span class="unit-tag">#${idx+1}</span>
+      <div class="unit-fields">
+        <div class="custodian-wrap">
+          <input type="text" placeholder="保管人姓名…" data-key="${key}" data-idx="${idx}" class="custodian-input" value="${val}">
+          <button type="button" class="btn-public" data-key="${key}" data-idx="${idx}">設為公用</button>
+        </div>
+        <input type="text" placeholder="地點（選填）" data-key="${key}" data-idx="${idx}" class="location-input mini-input" value="${s.locations[idx]}">
+        <select data-key="${key}" data-idx="${idx}" class="condition-select mini-input">
+          <option value="正常使用" ${s.conditions[idx]==='正常使用'?'selected':''}>正常使用</option>
+          <option value="功能異常" ${s.conditions[idx]==='功能異常'?'selected':''}>功能異常</option>
+          <option value="故障待維修" ${s.conditions[idx]==='故障待維修'?'selected':''}>故障待維修</option>
+          <option value="已報廢" ${s.conditions[idx]==='已報廢'?'selected':''}>已報廢</option>
+        </select>
+      </div>
+    </div>`).join('');
+
+  list.querySelectorAll('.custodian-input').forEach(inp=>inp.addEventListener('input', e=>{
+    checkedState[inp.dataset.key].custodians[parseInt(inp.dataset.idx)] = e.target.value;
+    updateSubmitState();
+  }));
+  list.querySelectorAll('.btn-public').forEach(btn=>btn.addEventListener('click', ()=>{
+    const k = btn.dataset.key, idx = parseInt(btn.dataset.idx);
+    checkedState[k].custodians[idx] = '公用';
+    renderCustodianRows(k);
+    updateSubmitState();
+  }));
+}
+
+function attachItemHandlers(){
+  itemsContainer.querySelectorAll('input[type=checkbox]').forEach(chk=>{
+    chk.addEventListener('change', ()=>{
+      const key = chk.dataset.key;
+      const row = document.getElementById('row-'+key);
+      if(chk.checked){
+        row.classList.add('checked');
+        checkedState[key] = {qty:1, custodians:[''], locations:[''], conditions:['正常使用']};
+        renderCustodianRows(key);
+      } else {
+        row.classList.remove('checked'); delete checkedState[key];
+      }
+      updateSubmitState();
+    });
+  });
+  itemsContainer.querySelectorAll('.qty-minus,.qty-plus').forEach(b=>b.addEventListener('click',()=>{
+    const inp = itemsContainer.querySelector(`.qty-input[data-key="${b.dataset.key}"]`);
+    inp.value = Math.max(1, (parseInt(inp.value)||1) + (b.classList.contains('qty-plus')?1:-1));
+    checkedState[b.dataset.key].qty = parseInt(inp.value);
+    renderCustodianRows(b.dataset.key);
+    updateSubmitState();
+  }));
+}
+
+function updateSubmitState(){
+  const keys = Object.keys(checkedState);
+  document.getElementById('checkedCount').textContent = keys.length;
+  const valid = keys.length > 0 && document.getElementById('reporterName').value.trim() !== '' && keys.every(k=>checkedState[k].custodians.every(c=>c.trim()!==''));
+  document.getElementById('btnSubmit').disabled = !valid;
+}
+document.getElementById('reporterName').addEventListener('input', updateSubmitState);
+
+/* POST 到 Google 試算表 */
+document.getElementById('btnSubmit').addEventListener('click', async ()=>{
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled = true; btn.textContent = '同步上傳中…';
+  
+  const officeCode = officeSelect.value;
+  const reporterName = document.getElementById('reporterName').value.trim();
+  const newRecords = [];
+
+  Object.keys(checkedState).forEach(key=>{
+    const [catCode, itemCode] = key.split(':');
+    const s = checkedState[key];
+    const cat = CAT_MAP[catCode];
+    const item = cat.items.find(i=>i.code===itemCode);
+
+    s.custodians.forEach((c, idx)=>{
+      newRecords.push({
+        id: 'REC-' + Date.now() + '-' + Math.floor(Math.random()*1000),
+        code: `${catCode}-${officeCode}-${idx+1}`,
+        categoryName: cat.name,
+        itemName: item.name,
+        officeName: OFFICE_MAP[officeCode].name,
+        qty: 1,
+        custodian: c,
+        location: s.locations[idx] || '',
+        condition: s.conditions[idx] || '正常使用',
+        submittedBy: reporterName,
+        createdAt: new Date().toLocaleString('zh-TW')
+      });
+    });
+  });
+
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create', records: newRecords })
+    });
+
+    document.getElementById('successCount').textContent = newRecords.length;
+    document.getElementById('successTags').innerHTML = newRecords.map(r=>`<span class="tag-chip"><span class="dot"></span>${r.code} · ${r.itemName}</span>`).join('');
+    document.getElementById('successPanel').classList.add('show');
+    itemsCard.style.display = 'none'; submitBar.style.display = 'none';
+    showToast('成功上傳至雲端！');
+  } catch(e) {
+    showToast('上傳失敗，請檢查網路連線');
+  }
+  btn.disabled = false; btn.textContent = '送出盤點資料至雲端';
+});
+
+document.getElementById('btnAddMore').addEventListener('click', ()=>{
+  document.getElementById('successPanel').classList.remove('show');
+  itemsCard.style.display = 'block'; submitBar.style.display = 'flex';
+  buildItemChecklist();
+});
+
+/* 切換頁面與從雲端抓資料 */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+
+    if(btn.dataset.view === 'admin'){
+      showToast('從雲端載入資料中…');
+      try {
+        const res = await fetch(GAS_URL);
+        allRecords = await res.json();
+        renderAdmin();
+      } catch(e) { showToast('載入雲端資料失敗'); }
+    }
+  });
+});
+
+function renderAdmin(){
+  const tbody = document.getElementById('tableBody');
+  document.getElementById('emptyState').style.display = allRecords.length ? 'none' : 'block';
+  tbody.innerHTML = allRecords.map(r=>`
+    <tr>
+      <td class="code-cell">${r.code}</td>
+      <td><span class="cat-pill">${r.categoryName}</span></td>
+      <td>${r.officeName}</td>
+      <td>${r.itemName}</td>
+      <td>${r.qty}</td>
+      <td>${r.custodian}</td>
+      <td>${r.location || '—'}</td>
+      <td>${r.condition}</td>
+      <td>${r.submittedBy}</td>
+      <td>${r.createdAt}</td>
+    </tr>`).join('');
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+</script>
+</body>
+</html>
