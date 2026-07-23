@@ -42,7 +42,7 @@
   }
   .brand{display:flex;align-items:center;gap:10px;}
   .brand-mark{
-    width:34px;height:34px;border-radius:99px;
+    width:34px;height:34px;border-radius:9px;
     background:var(--teal);
     display:flex;align-items:center;justify-content:center;
     color:#fff;font-weight:900;font-size:15px;flex-shrink:0;
@@ -167,6 +167,8 @@
     border-radius:8px;padding:0 10px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;height:38px;
   }
   .btn-public.on{background:var(--amber);color:#fff;}
+  .other-name{width:100%;}
+  .other-name input{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:0 10px;height:38px;font-family:var(--sans);font-size:13.5px;}
   .mini-input{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:0 10px;height:38px;font-family:var(--sans);font-size:13.5px;background:#fff;color:var(--ink);}
 
   /* submit bar */
@@ -200,7 +202,7 @@
   }
   .tag-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);}
   .btn-ghost{
-    background:transparent;border:1.5px solid var(--line);color:var(--ink-soft);border-radius:99px;
+    background:transparent;border:1.5px solid var(--line);color:var(--ink-soft);border-radius:9px;
     padding:9px 16px;font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;
   }
 
@@ -238,6 +240,9 @@
     color:var(--teal-dark);white-space:nowrap;
   }
   .edit-input{border:1px solid transparent;background:transparent;font-family:var(--sans);font-size:13px;width:100%;padding:3px 5px;border-radius:5px;}
+  .edit-input:hover{border-color:var(--line);}
+  .edit-input:focus{border-color:var(--teal);background:#fff;outline:none;}
+  .del-btn{border:none;background:var(--red-light);color:var(--red);border-radius:7px;padding:5px 9px;font-size:11.5px;font-weight:700;cursor:pointer;}
   .table-wrap{overflow-x:auto;border-radius:12px;}
   .empty-state{text-align:center;padding:50px 20px;color:var(--muted);font-size:13px;}
   .toast{
@@ -246,27 +251,57 @@
     opacity:0;transition:.25s;pointer-events:none;z-index:999;box-shadow:0 8px 20px rgba(0,0,0,.2);
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .footer-note{text-align:center;font-size:11px;color:var(--muted);margin-top:24px;}
+  @media (max-width:640px){
+    .brand-text p{display:none;}
+    thead th:nth-child(7),tbody td:nth-child(7),
+    thead th:nth-child(9),tbody td:nth-child(9),
+    thead th:nth-child(10),tbody td:nth-child(10){display:none;}
+  }
 </style>
 </head>
 <body>
-
+<div id="fatalError" style="display:none;position:fixed;inset:0;background:#fff;z-index:9999;padding:24px;font-family:sans-serif;">
+  <h2 style="color:#C1543F;">系統載入發生問題</h2>
+  <p>請截圖以下錯誤訊息回報：</p>
+  <pre id="fatalErrorMsg" style="background:#f5f5f5;padding:12px;border-radius:8px;white-space:pre-wrap;font-size:12px;"></pre>
+  <p>可先嘗試：改用電腦版 Chrome 瀏覽器開啟此檔案，或確認裝置已連上網路。</p>
+</div>
+<script>
+window.addEventListener('error', function(e){
+  const box = document.getElementById('fatalError');
+  const msg = document.getElementById('fatalErrorMsg');
+  if(box && msg){
+    msg.textContent += (e.message||'未知錯誤') + '\n(來源: ' + (e.filename||'') + ' 第' + (e.lineno||'?') + '行)\n';
+    box.style.display = 'block';
+  }
+});
+</script>
 <div class="app">
+
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark">物</div>
       <div class="brand-text">
         <h1>多辦公室物資盤點系統</h1>
-        <p>資料即時同步至雲端試算表</p>
+        <p>資料即時同步 · 所有辦公室共用一份清冊</p>
       </div>
     </div>
     <div class="tabs">
       <button class="tab-btn active" data-view="input">填寫盤點</button>
-      <button class="tab-btn" data-view="admin">後台總覽</button>
+      <button class="tab-btn" data-view="admin">後台管理</button>
     </div>
   </div>
 
-  <!-- INPUT VIEW -->
+  <!-- ===== INPUT VIEW ===== -->
   <div class="view active" id="view-input">
+
+    <div class="subtabs">
+      <button class="subtab-btn active" data-subtab="new">＋ 新增盤點</button>
+      <button class="subtab-btn" data-subtab="lookup">🔍 查我填過的</button>
+    </div>
+
+    <div id="subview-new">
     <div class="card">
       <h2>1. 選擇辦公室 · 填寫人</h2>
       <p class="hint">請選擇本次盤點的辦公室據點，並填寫你的姓名</p>
@@ -291,7 +326,7 @@
         <div class="success-head">
           <div class="success-icon">✓</div>
           <div>
-            <h2 style="margin:0;">已成功上傳雲端！共新增 <span id="successCount">0</span> 筆盤點紀錄</h2>
+            <h2 style="margin:0;">已送出，共新增 <span id="successCount">0</span> 筆盤點紀錄</h2>
             <p class="hint" style="margin:2px 0 0;">系統自動生成的編碼如下：</p>
           </div>
         </div>
@@ -306,48 +341,90 @@
       <div class="submit-bar-inner" style="flex-direction:column;align-items:stretch;gap:8px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
           <div class="submit-count">已勾選 <b id="checkedCount">0</b> 項</div>
-          <button class="btn-primary" id="btnSubmit" disabled>送出盤點資料至雲端</button>
+          <button class="btn-primary" id="btnSubmit" disabled>送出盤點資料</button>
         </div>
+        <div id="submitBlockReason" style="display:none;font-size:12px;color:var(--red);background:var(--red-light);padding:8px 10px;border-radius:8px;"></div>
+      </div>
+    </div>
+    </div>
+
+    <div id="subview-lookup" style="display:none;">
+      <div class="card">
+        <h2>查詢已填寫的紀錄</h2>
+        <p class="hint">選辦公室、輸入你的姓名或品項關鍵字，找到後可直接修改，不會產生新的編碼</p>
+        <select id="lookupOffice"><option value="">全部辦公室</option></select>
+        <input type="text" id="lookupSearch" class="mini-input" style="margin-top:10px;" placeholder="輸入姓名或品項關鍵字…（例如：王小明、筆電）">
+      </div>
+      <div id="lookupResults"></div>
+    </div>
+  </div>
+
+  <!-- ===== ADMIN PIN LOCK ===== -->
+  <div id="pinOverlay" style="display:none;position:fixed;inset:0;background:rgba(31,45,42,.55);z-index:500;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:26px 24px;width:280px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.25);">
+      <div style="font-size:28px;margin-bottom:6px;">🔒</div>
+      <h3 style="margin:0 0 4px;font-size:15px;">後台管理需要 PIN 碼</h3>
+      <p style="margin:0 0 14px;font-size:12px;color:#8A9591;">請輸入 4 位數管理密碼</p>
+      <input id="pinInput" type="password" inputmode="numeric" maxlength="4" style="width:100%;text-align:center;font-size:22px;letter-spacing:10px;padding:10px;border-radius:10px;border:1.5px solid #DFE6E2;font-family:ui-monospace,monospace;">
+      <p id="pinError" style="color:#C1543F;font-size:12px;height:16px;margin:8px 0 0;"></p>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button id="pinCancel" class="btn-ghost" style="flex:1;">取消</button>
+        <button id="pinConfirm" class="btn-primary" style="flex:1;">確認</button>
       </div>
     </div>
   </div>
 
-  <!-- ADMIN VIEW -->
+  <!-- ===== ADMIN VIEW ===== -->
   <div class="view" id="view-admin">
+    <div class="stats-row" id="statsRow"></div>
+
     <div class="card" style="padding:14px 16px;">
       <div class="toolbar">
+        <select id="filterOffice"><option value="">全部辦公室</option></select>
+        <select id="filterCategory"><option value="">全部類別</option></select>
+        <select id="filterCondition">
+          <option value="">全部狀況</option>
+          <option value="正常使用">正常使用</option>
+          <option value="功能異常">功能異常（堪用）</option>
+          <option value="故障待維修">故障待維修</option>
+          <option value="已報廢">已報廢</option>
+        </select>
         <input type="text" class="search" id="searchBox" placeholder="搜尋品項 / 保管人 / 編碼…">
+        <div class="spacer"></div>
+        <button class="btn-export csv" id="btnExportCsv">⭳ 匯出 CSV</button>
+        <button class="btn-export xlsx" id="btnExportXlsx">⭳ 匯出 Excel</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>編碼</th>
-              <th>類別</th>
-              <th>辦公室</th>
-              <th>品項</th>
-              <th>數量</th>
-              <th>保管人</th>
-              <th>地點</th>
-              <th>狀況</th>
-              <th>填寫人</th>
-              <th>建立時間</th>
+              <th data-sort="code">編碼</th>
+              <th data-sort="categoryName">類別</th>
+              <th data-sort="officeName">辦公室</th>
+              <th data-sort="itemName">品項</th>
+              <th data-sort="qty">數量</th>
+              <th data-sort="custodian">保管人</th>
+              <th data-sort="location">地點</th>
+              <th data-sort="condition">狀況</th>
+              <th data-sort="submittedBy">填寫人</th>
+              <th data-sort="createdAt">建立時間</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody id="tableBody"></tbody>
         </table>
       </div>
-      <div class="empty-state" id="emptyState" style="display:none;">目前雲端尚無盤點資料</div>
+      <div class="empty-state" id="emptyState" style="display:none;">目前尚無盤點資料，請至「填寫盤點」新增</div>
     </div>
+    <p class="footer-note">所有辦公室同事填寫的資料皆會即時彙整於此表格，供全體管理者共用檢視。</p>
   </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-// 已填入你的專屬 Google Apps Script 網址
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwLgiuZP88QSgZibxJW4NtUre6xM81XsgDXEwnJLnssbEoT8piFgh6a5zi1O_Mlva9qhw/exec';
-
+/* ---------------- DATA DEFINITIONS ---------------- */
 const OFFICES = [
   {code:'HQ',    name:'協會總部', addr:'新北市永和區永樂里自由街55號9樓'},
   {code:'YH1',   name:'永和據點', addr:'新北市永和區文化路155號'},
@@ -380,25 +457,113 @@ const OFFICES = [
 ];
 
 const CATEGORIES = [
-  {code:'COMP', name:'電腦類', items:[{code:'NB',name:'筆電'},{code:'PC',name:'桌上型電腦主機'},{code:'MNT',name:'電腦螢幕'},{code:'TAB',name:'平板電腦'}]},
-  {code:'AV', name:'影音類', items:[{code:'TV',name:'電視'},{code:'PROJ',name:'投影機'},{code:'SPK',name:'喇叭'}]},
-  {code:'COMM', name:'通訊類', items:[{code:'PHONE',name:'公務手機'},{code:'TEL',name:'市內電話'},{code:'WIFI',name:'網路訊號增強器'}]},
-  {code:'OFF', name:'辦公設備', items:[{code:'COPY',name:'影印機'},{code:'LAM',name:'護貝機'},{code:'SHRD',name:'碎紙機'},{code:'LABEL',name:'標籤機'}]},
-  {code:'CCTV', name:'監視設備', items:[{code:'CAM',name:'監視器'},{code:'DVR',name:'監視器主機'},{code:'CMNT',name:'監視器螢幕'}]},
-  {code:'APPL', name:'家電類', items:[{code:'COFFEE',name:'咖啡機'},{code:'AC',name:'冷氣'},{code:'FRIDGE',name:'冰箱'},{code:'FAN',name:'電風扇'},{code:'DEHUM',name:'除濕機'},{code:'AIR',name:'空氣清新機'},{code:'VAC',name:'吸塵器'},{code:'WATER',name:'飲水機'},{code:'MICRO',name:'微波爐'},{code:'RICE',name:'電鍋'}]},
-  {code:'MED', name:'醫療器材', items:[{code:'BED',name:'醫療床'},{code:'BP',name:'血壓機'}]},
-  {code:'OTH', name:'其他', items:[{code:'OTH',name:'其他（請填寫品名）'}]}
+  {code:'COMP', name:'電腦類', items:[
+    {code:'NB',name:'筆電'},{code:'PC',name:'桌上型電腦主機'},{code:'MNT',name:'電腦螢幕'},{code:'TAB',name:'平板電腦'},
+  ]},
+  {code:'AV', name:'影音類', items:[
+    {code:'TV',name:'電視'},{code:'PROJ',name:'投影機'},{code:'SPK',name:'喇叭'},
+  ]},
+  {code:'COMM', name:'通訊類', items:[
+    {code:'PHONE',name:'公務手機'},{code:'TEL',name:'市內電話'},{code:'WIFI',name:'網路訊號增強器'},
+  ]},
+  {code:'OFF', name:'辦公設備', items:[
+    {code:'COPY',name:'影印機'},{code:'LAM',name:'護貝機'},{code:'SHRD',name:'碎紙機'},{code:'LABEL',name:'標籤機'},
+  ]},
+  {code:'CCTV', name:'監視設備', items:[
+    {code:'CAM',name:'監視器'},{code:'DVR',name:'監視器主機'},{code:'CMNT',name:'監視器螢幕'},
+  ]},
+  {code:'APPL', name:'家電類', items:[
+    {code:'COFFEE',name:'咖啡機'},{code:'AC',name:'冷氣'},{code:'FRIDGE',name:'冰箱'},{code:'FAN',name:'電風扇'},
+    {code:'DEHUM',name:'除濕機'},{code:'AIR',name:'空氣清新機'},{code:'VAC',name:'吸塵器'},{code:'WATER',name:'飲水機'},
+    {code:'MICRO',name:'微波爐'},{code:'RICE',name:'電鍋'},
+  ]},
+  {code:'MED', name:'醫療器材', items:[
+    {code:'BED',name:'醫療床'},{code:'BP',name:'血壓機'},
+  ]},
+  {code:'OTH', name:'其他', items:[
+    {code:'OTH',name:'其他（請填寫品名）'},
+  ]},
 ];
 
 const OFFICE_MAP = Object.fromEntries(OFFICES.map(o=>[o.code,o]));
 const CAT_MAP = Object.fromEntries(CATEGORIES.map(c=>[c.code,c]));
-let checkedState = {};
+function itemMeta(catCode,itemCode){
+  const cat = CAT_MAP[catCode];
+  const item = cat.items.find(i=>i.code===itemCode);
+  return {cat,item};
+}
+
+/* ---------------- GOOGLE SHEETS API HELPERS ---------------- */
+// ⚠️ 請把下面這行換成你部署 Google Apps Script 後拿到的網址
+// 長得像：https://script.google.com/macros/s/xxxxxxxxxx/exec
+const API_URL = 'https://script.google.com/macros/s/AKfycbwwTK86Y2pGbAAA3L5Z2b7uNx5WqZx__6h6cQlpGJvQfurVksGimyACEIUjlx-UUkM_tQ/exec';
+
+async function apiList(){
+  try{
+    const res = await fetch(API_URL + '?action=list');
+    const data = await res.json();
+    if(data.error){ console.error('API error', data.error); return []; }
+    return (data.records||[]).map(r=>({...r, qty: Number(r.qty)||1}));
+  }catch(e){
+    console.error('apiList failed', e);
+    showToast('讀取資料失敗，請確認網路連線或稍後再試');
+    return [];
+  }
+}
+async function apiAddRecords(items){
+  try{
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'}, // 用text/plain避免CORS預檢請求
+      body: JSON.stringify({action:'addRecords', records: items}),
+    });
+    const data = await res.json();
+    if(data.error){ console.error('API error', data.error); return {ok:false, records:[]}; }
+    return data;
+  }catch(e){
+    console.error('apiAddRecords failed', e);
+    return {ok:false, records:[]};
+  }
+}
+async function apiUpdateRecord(id, patch){
+  try{
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'updateRecord', id, patch}),
+    });
+    const data = await res.json();
+    return !!data.ok;
+  }catch(e){
+    console.error('apiUpdateRecord failed', e);
+    return false;
+  }
+}
+async function apiDeleteRecord(id){
+  try{
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'deleteRecord', id}),
+    });
+    const data = await res.json();
+    return !!data.ok;
+  }catch(e){
+    console.error('apiDeleteRecord failed', e);
+    return false;
+  }
+}
+
+/* ---------------- STATE ---------------- */
+let checkedState = {}; // key: catCode+':'+itemCode -> {qty,custodian,isPublic,otherName}
 let allRecords = [];
 
+/* ---------------- INPUT VIEW BUILD ---------------- */
 const officeSelect = document.getElementById('officeSelect');
 OFFICES.forEach(o=>{
   const opt = document.createElement('option');
-  opt.value = o.code; opt.textContent = `${o.name}（代碼 ${o.code}）`;
+  opt.value = o.code;
+  opt.textContent = `${o.name}（代碼 ${o.code}）`;
   officeSelect.appendChild(opt);
 });
 
@@ -427,13 +592,15 @@ function buildItemChecklist(){
     cat.items.forEach(item=>{
       const key = cat.code+':'+item.code;
       const row = document.createElement('div');
-      row.className = 'item-row'; row.id = 'row-'+key;
+      row.className = 'item-row';
+      row.id = 'row-'+key;
+      const isOther = item.code === 'OTH';
       row.innerHTML = `
         <div class="item-row-head">
           <input type="checkbox" id="chk-${key}" data-key="${key}">
           <label for="chk-${key}">${item.name}</label>
         </div>
-        <div class="item-detail">
+        <div class="item-detail" data-is-other="${isOther}">
           <div class="detail-row-top">
             <div class="field-mini">
               <label>數量</label>
@@ -444,8 +611,9 @@ function buildItemChecklist(){
               </div>
             </div>
           </div>
-          <div class="custodian-list" id="custodian-list-${key}"></div>
-        </div>`;
+          <div class="custodian-list" id="custodian-list-${key}" data-key="${key}"></div>
+        </div>
+      `;
       group.appendChild(row);
     });
     itemsContainer.appendChild(group);
@@ -455,37 +623,78 @@ function buildItemChecklist(){
 }
 
 function renderCustodianRows(key){
-  const s = checkedState[key]; if(!s) return;
-  while(s.custodians.length < s.qty){ s.custodians.push(''); s.locations.push(''); s.conditions.push('正常使用'); }
-  while(s.custodians.length > s.qty){ s.custodians.pop(); s.locations.pop(); s.conditions.pop(); }
+  const s = checkedState[key];
+  if(!s) return;
+  const qty = s.qty;
+  const isOther = key.startsWith('OTH:');
+  while(s.custodians.length < qty){
+    s.custodians.push(''); s.isPublicArr.push(false);
+    s.locations.push(''); s.conditions.push('正常使用'); s.otherNames.push('');
+  }
+  while(s.custodians.length > qty){
+    s.custodians.pop(); s.isPublicArr.pop(); s.locations.pop(); s.conditions.pop(); s.otherNames.pop();
+  }
 
-  const list = document.getElementById('custodian-list-'+key); if(!list) return;
+  const list = document.getElementById('custodian-list-'+key);
+  if(!list) return;
   list.innerHTML = s.custodians.map((val,idx)=>`
     <div class="custodian-unit-row">
       <span class="unit-tag">#${idx+1}</span>
       <div class="unit-fields">
+        ${isOther ? `<input type="text" placeholder="品項名稱…" data-key="${key}" data-idx="${idx}" class="other-name-input mini-input" style="min-width:140px;" value="${(s.otherNames[idx]||'').replace(/"/g,'&quot;')}">` : ''}
         <div class="custodian-wrap">
-          <input type="text" placeholder="保管人姓名…" data-key="${key}" data-idx="${idx}" class="custodian-input" value="${val}">
-          <button type="button" class="btn-public" data-key="${key}" data-idx="${idx}">設為公用</button>
+          <input type="text" placeholder="保管人姓名…" data-key="${key}" data-idx="${idx}" class="custodian-input" value="${val.replace(/"/g,'&quot;')}">
+          <button type="button" class="btn-public ${s.isPublicArr[idx]?'on':''}" data-key="${key}" data-idx="${idx}">設為公用</button>
         </div>
-        <input type="text" placeholder="地點（選填）" data-key="${key}" data-idx="${idx}" class="location-input mini-input" value="${s.locations[idx]}">
+        <input type="text" placeholder="存放/使用地點（選填）" data-key="${key}" data-idx="${idx}" class="location-input mini-input" value="${(s.locations[idx]||'').replace(/"/g,'&quot;')}">
         <select data-key="${key}" data-idx="${idx}" class="condition-select mini-input">
           <option value="正常使用" ${s.conditions[idx]==='正常使用'?'selected':''}>正常使用</option>
-          <option value="功能異常" ${s.conditions[idx]==='功能異常'?'selected':''}>功能異常</option>
+          <option value="功能異常" ${s.conditions[idx]==='功能異常'?'selected':''}>功能異常（堪用）</option>
           <option value="故障待維修" ${s.conditions[idx]==='故障待維修'?'selected':''}>故障待維修</option>
           <option value="已報廢" ${s.conditions[idx]==='已報廢'?'selected':''}>已報廢</option>
         </select>
       </div>
-    </div>`).join('');
+    </div>
+  `).join('');
 
-  list.querySelectorAll('.custodian-input').forEach(inp=>inp.addEventListener('input', e=>{
-    checkedState[inp.dataset.key].custodians[parseInt(inp.dataset.idx)] = e.target.value;
+  list.querySelectorAll('.custodian-input').forEach(inp=>inp.addEventListener('input',()=>{
+    const k = inp.dataset.key, idx = parseInt(inp.dataset.idx);
+    if(checkedState[k]){
+      checkedState[k].custodians[idx] = inp.value;
+      checkedState[k].isPublicArr[idx] = false;
+      const btn = list.querySelector(`.btn-public[data-key="${k}"][data-idx="${idx}"]`);
+      if(btn) btn.classList.remove('on');
+    }
     updateSubmitState();
   }));
-  list.querySelectorAll('.btn-public').forEach(btn=>btn.addEventListener('click', ()=>{
+  list.querySelectorAll('.btn-public').forEach(btn=>btn.addEventListener('click',()=>{
     const k = btn.dataset.key, idx = parseInt(btn.dataset.idx);
-    checkedState[k].custodians[idx] = '公用';
-    renderCustodianRows(k);
+    const inp = list.querySelector(`.custodian-input[data-key="${k}"][data-idx="${idx}"]`);
+    if(checkedState[k]){
+      checkedState[k].isPublicArr[idx] = !checkedState[k].isPublicArr[idx];
+      if(checkedState[k].isPublicArr[idx]){
+        checkedState[k].custodians[idx] = '公用';
+        inp.value = '公用';
+        btn.classList.add('on');
+      } else {
+        checkedState[k].custodians[idx] = '';
+        inp.value = '';
+        btn.classList.remove('on');
+      }
+    }
+    updateSubmitState();
+  }));
+  list.querySelectorAll('.location-input').forEach(inp=>inp.addEventListener('input',()=>{
+    const k = inp.dataset.key, idx = parseInt(inp.dataset.idx);
+    if(checkedState[k]) checkedState[k].locations[idx] = inp.value;
+  }));
+  list.querySelectorAll('.condition-select').forEach(sel=>sel.addEventListener('change',()=>{
+    const k = sel.dataset.key, idx = parseInt(sel.dataset.idx);
+    if(checkedState[k]) checkedState[k].conditions[idx] = sel.value;
+  }));
+  list.querySelectorAll('.other-name-input').forEach(inp=>inp.addEventListener('input',()=>{
+    const k = inp.dataset.key, idx = parseInt(inp.dataset.idx);
+    if(checkedState[k]) checkedState[k].otherNames[idx] = inp.value;
     updateSubmitState();
   }));
 }
@@ -497,19 +706,31 @@ function attachItemHandlers(){
       const row = document.getElementById('row-'+key);
       if(chk.checked){
         row.classList.add('checked');
-        checkedState[key] = {qty:1, custodians:[''], locations:[''], conditions:['正常使用']};
+        checkedState[key] = checkedState[key] || {qty:1, custodians:[''], isPublicArr:[false], otherNames:[''], locations:[''], conditions:['正常使用']};
         renderCustodianRows(key);
       } else {
-        row.classList.remove('checked'); delete checkedState[key];
+        row.classList.remove('checked');
+        delete checkedState[key];
       }
       updateSubmitState();
     });
   });
-  itemsContainer.querySelectorAll('.qty-minus,.qty-plus').forEach(b=>b.addEventListener('click',()=>{
+  itemsContainer.querySelectorAll('.qty-minus').forEach(b=>b.addEventListener('click',()=>{
     const inp = itemsContainer.querySelector(`.qty-input[data-key="${b.dataset.key}"]`);
-    inp.value = Math.max(1, (parseInt(inp.value)||1) + (b.classList.contains('qty-plus')?1:-1));
-    checkedState[b.dataset.key].qty = parseInt(inp.value);
-    renderCustodianRows(b.dataset.key);
+    inp.value = Math.max(1, (parseInt(inp.value)||1) - 1);
+    inp.dispatchEvent(new Event('input'));
+  }));
+  itemsContainer.querySelectorAll('.qty-plus').forEach(b=>b.addEventListener('click',()=>{
+    const inp = itemsContainer.querySelector(`.qty-input[data-key="${b.dataset.key}"]`);
+    inp.value = (parseInt(inp.value)||1) + 1;
+    inp.dispatchEvent(new Event('input'));
+  }));
+  itemsContainer.querySelectorAll('.qty-input').forEach(inp=>inp.addEventListener('input',()=>{
+    const key = inp.dataset.key;
+    if(checkedState[key]){
+      checkedState[key].qty = Math.max(1, parseInt(inp.value)||1);
+      renderCustodianRows(key);
+    }
     updateSubmitState();
   }));
 }
@@ -517,110 +738,452 @@ function attachItemHandlers(){
 function updateSubmitState(){
   const keys = Object.keys(checkedState);
   document.getElementById('checkedCount').textContent = keys.length;
-  const valid = keys.length > 0 && document.getElementById('reporterName').value.trim() !== '' && keys.every(k=>checkedState[k].custodians.every(c=>c.trim()!==''));
+  const reasons = [];
+  if(!document.getElementById('reporterName').value.trim()) reasons.push('請填寫「填寫人姓名」');
+  keys.forEach(key=>{
+    const s = checkedState[key];
+    const {item} = itemMeta(...key.split(':'));
+    if(!s.custodians || !s.custodians.length || s.custodians.some(c=>!c || !c.trim())){
+      reasons.push(`「${item.name}」還有保管人沒填（可點「設為公用」快速填）`);
+    }
+    if(key.startsWith('OTH:') && s.otherNames.some(n=>!n || !n.trim())){
+      reasons.push('「其他」品項還有名稱沒填');
+    }
+  });
+  const valid = keys.length > 0 && reasons.length === 0;
   document.getElementById('btnSubmit').disabled = !valid;
+  const reasonBox = document.getElementById('submitBlockReason');
+  if(keys.length > 0 && reasons.length > 0){
+    reasonBox.style.display = 'block';
+    reasonBox.innerHTML = '⚠️ 尚未能送出：<br>' + [...new Set(reasons)].map(r=>'・'+r).join('<br>');
+  } else {
+    reasonBox.style.display = 'none';
+  }
 }
 document.getElementById('reporterName').addEventListener('input', updateSubmitState);
 
-/* POST 到 Google 試算表 */
-document.getElementById('btnSubmit').addEventListener('click', async ()=>{
-  const btn = document.getElementById('btnSubmit');
-  btn.disabled = true; btn.textContent = '同步上傳中…';
-  
-  const officeCode = officeSelect.value;
+/* ---------------- BUILD SUBMISSION ITEMS ---------------- */
+function buildSubmissionItems(officeCode){
+  const items = [];
   const reporterName = document.getElementById('reporterName').value.trim();
-  const newRecords = [];
-
-  Object.keys(checkedState).forEach(key=>{
+  for(const key of Object.keys(checkedState)){
     const [catCode, itemCode] = key.split(':');
     const s = checkedState[key];
-    const cat = CAT_MAP[catCode];
-    const item = cat.items.find(i=>i.code===itemCode);
-
-    s.custodians.forEach((c, idx)=>{
-      newRecords.push({
-        id: 'REC-' + Date.now() + '-' + Math.floor(Math.random()*1000),
-        code: `${catCode}-${officeCode}-${idx+1}`,
+    const {cat,item} = itemMeta(catCode,itemCode);
+    s.custodians.forEach((custodianRaw,idx)=>{
+      const itemName = itemCode==='OTH' ? (s.otherNames[idx].trim()||'其他') : item.name;
+      items.push({
+        categoryCode: catCode,
         categoryName: cat.name,
-        itemName: item.name,
+        itemCode,
+        itemName,
+        officeCode,
         officeName: OFFICE_MAP[officeCode].name,
         qty: 1,
-        custodian: c,
-        location: s.locations[idx] || '',
+        custodian: custodianRaw.trim(),
+        location: (s.locations[idx]||'').trim(),
         condition: s.conditions[idx] || '正常使用',
         submittedBy: reporterName,
-        createdAt: new Date().toLocaleString('zh-TW')
       });
     });
-  });
+  }
+  return items;
+}
 
-  try {
-    await fetch(GAS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create', records: newRecords })
-    });
+/* ---------------- SUBMIT ---------------- */
+document.getElementById('btnSubmit').addEventListener('click', async ()=>{
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled = true; btn.textContent = '送出中…';
+  const officeCode = officeSelect.value;
+  try{
+    const items = buildSubmissionItems(officeCode);
+    const result = await apiAddRecords(items);
+    if(!result.ok || !result.records || !result.records.length){
+      showToast('儲存失敗，請確認網路連線後再試一次');
+      btn.disabled=false; btn.textContent='送出盤點資料'; return;
+    }
+    const newRecords = result.records;
+    allRecords = allRecords.concat(newRecords);
 
     document.getElementById('successCount').textContent = newRecords.length;
-    document.getElementById('successTags').innerHTML = newRecords.map(r=>`<span class="tag-chip"><span class="dot"></span>${r.code} · ${r.itemName}</span>`).join('');
+    const tagsWrap = document.getElementById('successTags');
+    tagsWrap.innerHTML = newRecords.map(r=>`<span class="tag-chip"><span class="dot"></span>${r.code} · ${r.itemName}</span>`).join('');
     document.getElementById('successPanel').classList.add('show');
-    itemsCard.style.display = 'none'; submitBar.style.display = 'none';
-    showToast('成功上傳至雲端！');
-  } catch(e) {
-    showToast('上傳失敗，請檢查網路連線');
+    itemsCard.style.display = 'none';
+    submitBar.style.display = 'none';
+    showToast(`已成功新增 ${newRecords.length} 筆盤點資料`);
+    renderAdminIfNeeded();
+  }catch(e){
+    console.error(e);
+    showToast('發生錯誤，請重試一次');
   }
-  btn.disabled = false; btn.textContent = '送出盤點資料至雲端';
+  btn.disabled = false; btn.textContent = '送出盤點資料';
 });
 
 document.getElementById('btnAddMore').addEventListener('click', ()=>{
   document.getElementById('successPanel').classList.remove('show');
-  itemsCard.style.display = 'block'; submitBar.style.display = 'flex';
+  itemsCard.style.display = 'block';
+  submitBar.style.display = 'flex';
   buildItemChecklist();
 });
 
-/* 切換頁面與從雲端抓資料 */
-document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', async ()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+/* ---------------- ADMIN PIN LOCK ---------------- */
+const ADMIN_PIN = '1234'; // ← 管理密碼，可自行修改此處的 4 碼
+let adminUnlocked = false;
+const pinOverlay = document.getElementById('pinOverlay');
+const pinInput = document.getElementById('pinInput');
+const pinError = document.getElementById('pinError');
 
-    if(btn.dataset.view === 'admin'){
-      showToast('從雲端載入資料中…');
-      try {
-        const res = await fetch(GAS_URL);
-        allRecords = await res.json();
-        renderAdmin();
-      } catch(e) { showToast('載入雲端資料失敗'); }
+function openPinPrompt(onSuccess){
+  pinInput.value = '';
+  pinError.textContent = '';
+  pinOverlay.style.display = 'flex';
+  setTimeout(()=>pinInput.focus(), 50);
+  pinOverlay._onSuccess = onSuccess;
+}
+document.getElementById('pinConfirm').addEventListener('click', ()=>{
+  if(pinInput.value === ADMIN_PIN){
+    adminUnlocked = true;
+    pinOverlay.style.display = 'none';
+    if(pinOverlay._onSuccess) pinOverlay._onSuccess();
+  } else {
+    pinError.textContent = 'PIN 碼錯誤，請再試一次';
+    pinInput.value = '';
+    pinInput.focus();
+  }
+});
+document.getElementById('pinCancel').addEventListener('click', ()=>{
+  pinOverlay.style.display = 'none';
+  document.querySelector('.tab-btn[data-view="input"]').click();
+});
+pinInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') document.getElementById('pinConfirm').click(); });
+
+/* ---------------- INPUT SUBTABS: 新增 / 查我填過的 ---------------- */
+const lookupOffice = document.getElementById('lookupOffice');
+OFFICES.forEach(o=>{
+  const opt = document.createElement('option'); opt.value=o.code; opt.textContent=o.name;
+  lookupOffice.appendChild(opt);
+});
+let lookupCache = [];
+let lookupLoaded = false;
+
+document.querySelectorAll('.subtab-btn').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    document.querySelectorAll('.subtab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const sub = btn.dataset.subtab;
+    document.getElementById('subview-new').style.display = sub==='new' ? 'block' : 'none';
+    document.getElementById('subview-lookup').style.display = sub==='lookup' ? 'block' : 'none';
+    if(sub==='lookup'){
+      document.getElementById('lookupResults').innerHTML = '<p class="hint" style="padding:10px 2px;">載入中…</p>';
+      lookupCache = await apiList();
+      lookupLoaded = true;
+      renderLookupResults();
     }
   });
 });
 
+function renderLookupResults(){
+  const off = lookupOffice.value;
+  const q = document.getElementById('lookupSearch').value.trim().toLowerCase();
+  const wrap = document.getElementById('lookupResults');
+  if(!off && !q){
+    wrap.innerHTML = '<p class="hint" style="padding:10px 2px;">請選擇辦公室或輸入關鍵字開始查詢</p>';
+    return;
+  }
+  const rows = lookupCache.filter(r=>{
+    if(off && r.officeCode!==off) return false;
+    if(q && !(r.custodian.toLowerCase().includes(q) || r.itemName.toLowerCase().includes(q) || r.code.toLowerCase().includes(q) || (r.submittedBy||'').toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a,b)=> b.createdAt.localeCompare(a.createdAt));
+
+  if(!rows.length){
+    wrap.innerHTML = '<p class="hint" style="padding:10px 2px;">沒有符合的紀錄</p>';
+    return;
+  }
+  wrap.innerHTML = rows.map(r=>{
+    const cond = r.condition || '正常使用';
+    return `
+    <div class="lookup-card" data-id="${r.id}">
+      <div class="lookup-card-top">
+        <div class="lookup-title">${r.itemName} <span class="cat-pill">${r.officeName}</span></div>
+        <div class="lookup-meta">${r.code}</div>
+      </div>
+      <div class="lookup-fields">
+        <div class="custodian-wrap">
+          <input type="text" class="mini-input lk-custodian" value="${(r.custodian||'').replace(/"/g,'&quot;')}" placeholder="保管人">
+          <button type="button" class="btn-public lk-public">設為公用</button>
+        </div>
+        <input type="text" class="mini-input lk-location" value="${(r.location||'').replace(/"/g,'&quot;')}" placeholder="存放地點">
+        <select class="mini-input lk-condition">
+          <option value="正常使用" ${cond==='正常使用'?'selected':''}>正常使用</option>
+          <option value="功能異常" ${cond==='功能異常'?'selected':''}>功能異常（堪用）</option>
+          <option value="故障待維修" ${cond==='故障待維修'?'selected':''}>故障待維修</option>
+          <option value="已報廢" ${cond==='已報廢'?'selected':''}>已報廢</option>
+        </select>
+      </div>
+      <div class="lookup-save-hint">✓ 已儲存</div>
+    </div>
+  `;}).join('');
+
+  wrap.querySelectorAll('.lookup-card').forEach(card=>{
+    const id = card.dataset.id;
+    async function saveField(field, value){
+      const rec = lookupCache.find(r=>r.id===id);
+      if(!rec) return;
+      rec[field] = value;
+      const ok = await apiUpdateRecord(id, {[field]: value});
+      const hint = card.querySelector('.lookup-save-hint');
+      if(ok){ hint.classList.add('show'); setTimeout(()=>hint.classList.remove('show'), 1500); }
+      else { showToast('儲存失敗，請重試'); }
+    }
+    card.querySelector('.lk-custodian').addEventListener('change', e=>saveField('custodian', e.target.value.trim()));
+    card.querySelector('.lk-location').addEventListener('change', e=>saveField('location', e.target.value.trim()));
+    card.querySelector('.lk-condition').addEventListener('change', e=>saveField('condition', e.target.value));
+    card.querySelector('.lk-public').addEventListener('click', ()=>{
+      const inp = card.querySelector('.lk-custodian');
+      inp.value = '公用';
+      saveField('custodian', '公用');
+    });
+  });
+}
+lookupOffice.addEventListener('change', renderLookupResults);
+document.getElementById('lookupSearch').addEventListener('input', renderLookupResults);
+
+/* ---------------- TABS ---------------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if(btn.dataset.view === 'admin' && !adminUnlocked){
+      openPinPrompt(()=>{
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+        document.getElementById('view-admin').classList.add('active');
+        loadAndRenderAdmin();
+      });
+      return;
+    }
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view === 'admin') loadAndRenderAdmin();
+  });
+});
+
+/* ---------------- ADMIN VIEW ---------------- */
+const filterOffice = document.getElementById('filterOffice');
+const filterCategory = document.getElementById('filterCategory');
+OFFICES.forEach(o=>{
+  const opt = document.createElement('option'); opt.value=o.code; opt.textContent=o.name;
+  filterOffice.appendChild(opt);
+});
+CATEGORIES.forEach(c=>{
+  const opt = document.createElement('option'); opt.value=c.code; opt.textContent=c.name;
+  filterCategory.appendChild(opt);
+});
+
+let sortKey = 'code', sortDir = 1;
+let adminLoaded = false;
+
+async function loadAndRenderAdmin(){
+  allRecords = await apiList();
+  adminLoaded = true;
+  renderAdmin();
+}
+function renderAdminIfNeeded(){ if(adminLoaded) renderAdmin(); }
+
+function renderStats(){
+  const total = allRecords.length;
+  const totalQty = allRecords.reduce((s,r)=>s+ (r.qty||0),0);
+  const officeCount = new Set(allRecords.map(r=>r.officeCode)).size;
+  const needRepair = allRecords.filter(r=>r.condition==='故障待維修').length;
+  const catCounts = {};
+  allRecords.forEach(r=>{ catCounts[r.categoryName]=(catCounts[r.categoryName]||0)+1; });
+  const topCat = Object.entries(catCounts).sort((a,b)=>b[1]-a[1])[0];
+  const stats = [
+    {num: total, lbl:'盤點紀錄筆數'},
+    {num: totalQty, lbl:'物資總數量'},
+    {num: officeCount, lbl:'已填報辦公室數'},
+    {num: needRepair, lbl:'故障待維修', alert: needRepair>0, action:'故障待維修'},
+    {num: topCat ? topCat[1] : 0, lbl: topCat ? `最多類別：${topCat[0]}` : '尚無資料'},
+  ];
+  document.getElementById('statsRow').innerHTML = stats.map(s=>`
+    <div class="stat-card" ${s.action?`style="cursor:pointer;${s.alert?'border-color:var(--red);':''}"`:''} ${s.action?`data-cond-filter="${s.action}"`:''}>
+      <div class="num" ${s.alert?'style="color:var(--red);"':''}>${s.num}</div><div class="lbl">${s.lbl}</div>
+    </div>
+  `).join('');
+  document.querySelectorAll('.stat-card[data-cond-filter]').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      filterCondition.value = card.dataset.condFilter;
+      renderAdmin();
+    });
+  });
+}
+
+const filterCondition = document.getElementById('filterCondition');
+function getFiltered(){
+  const off = filterOffice.value, cat = filterCategory.value, cond = filterCondition.value, q = document.getElementById('searchBox').value.trim().toLowerCase();
+  return allRecords.filter(r=>{
+    if(off && r.officeCode!==off) return false;
+    if(cat && r.categoryCode!==cat) return false;
+    if(cond && (r.condition||'正常使用')!==cond) return false;
+    if(q && !(r.code.toLowerCase().includes(q) || r.itemName.toLowerCase().includes(q) || r.custodian.toLowerCase().includes(q) || r.officeName.toLowerCase().includes(q) || (r.location||'').toLowerCase().includes(q) || (r.submittedBy||'').toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a,b)=>{
+    let va=a[sortKey]??'', vb=b[sortKey]??'';
+    if(typeof va === 'string') return va.localeCompare(vb) * sortDir;
+    return (va-vb) * sortDir;
+  });
+}
+
+function conditionPillStyle(cond){
+  const map = {
+    '正常使用': 'background:var(--teal-light);color:var(--teal-dark);',
+    '功能異常': 'background:var(--amber-light);color:#8a5a1e;',
+    '故障待維修': 'background:var(--red-light);color:var(--red);',
+    '已報廢': 'background:var(--line);color:var(--ink-soft);',
+  };
+  return map[cond] || map['正常使用'];
+}
+
 function renderAdmin(){
+  renderStats();
+  const rows = getFiltered();
   const tbody = document.getElementById('tableBody');
-  document.getElementById('emptyState').style.display = allRecords.length ? 'none' : 'block';
-  tbody.innerHTML = allRecords.map(r=>`
-    <tr>
+  document.getElementById('emptyState').style.display = rows.length ? 'none' : 'block';
+  tbody.innerHTML = rows.map(r=>{
+    const cond = r.condition || '正常使用';
+    return `
+    <tr data-id="${r.id}">
       <td class="code-cell">${r.code}</td>
       <td><span class="cat-pill">${r.categoryName}</span></td>
       <td>${r.officeName}</td>
       <td>${r.itemName}</td>
-      <td>${r.qty}</td>
-      <td>${r.custodian}</td>
-      <td>${r.location || '—'}</td>
-      <td>${r.condition}</td>
-      <td>${r.submittedBy}</td>
-      <td>${r.createdAt}</td>
-    </tr>`).join('');
+      <td><input class="edit-input qty-edit" type="number" min="1" value="${r.qty}" style="width:50px;"></td>
+      <td><input class="edit-input custodian-edit" type="text" value="${r.custodian}"></td>
+      <td><input class="edit-input location-edit" type="text" value="${r.location||''}" placeholder="—"></td>
+      <td>
+        <select class="edit-input condition-edit" style="border:1px solid var(--line);border-radius:6px;padding:3px 5px;">
+          <option value="正常使用" ${cond==='正常使用'?'selected':''}>正常使用</option>
+          <option value="功能異常" ${cond==='功能異常'?'selected':''}>功能異常</option>
+          <option value="故障待維修" ${cond==='故障待維修'?'selected':''}>故障待維修</option>
+          <option value="已報廢" ${cond==='已報廢'?'selected':''}>已報廢</option>
+        </select>
+      </td>
+      <td style="font-size:12px;color:var(--ink-soft);">${r.submittedBy||'—'}</td>
+      <td style="font-size:11.5px;color:var(--muted);">${new Date(r.createdAt).toLocaleString('zh-TW',{hour12:false})}</td>
+      <td><button class="del-btn">刪除</button></td>
+    </tr>
+  `;}).join('');
+
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    const id = tr.dataset.id;
+    tr.querySelector('.qty-edit').addEventListener('change', async (e)=>{
+      const rec = allRecords.find(r=>r.id===id);
+      const qty = Math.max(1, parseInt(e.target.value)||1);
+      rec.qty = qty;
+      const ok = await apiUpdateRecord(id, {qty});
+      renderStats();
+      showToast(ok ? '已更新數量' : '更新失敗，請重試');
+    });
+    tr.querySelector('.custodian-edit').addEventListener('change', async (e)=>{
+      const rec = allRecords.find(r=>r.id===id);
+      const custodian = e.target.value.trim() || '公用';
+      rec.custodian = custodian;
+      const ok = await apiUpdateRecord(id, {custodian});
+      showToast(ok ? '已更新保管人' : '更新失敗，請重試');
+    });
+    tr.querySelector('.location-edit').addEventListener('change', async (e)=>{
+      const rec = allRecords.find(r=>r.id===id);
+      const location = e.target.value.trim();
+      rec.location = location;
+      const ok = await apiUpdateRecord(id, {location});
+      showToast(ok ? '已更新地點' : '更新失敗，請重試');
+    });
+    tr.querySelector('.condition-edit').addEventListener('change', async (e)=>{
+      const rec = allRecords.find(r=>r.id===id);
+      const condition = e.target.value;
+      rec.condition = condition;
+      const ok = await apiUpdateRecord(id, {condition});
+      showToast(ok ? '已更新設備狀況' : '更新失敗，請重試');
+    });
+    tr.querySelector('.del-btn').addEventListener('click', async ()=>{
+      if(!confirm('確定要刪除這筆盤點紀錄嗎？此動作無法復原。')) return;
+      const ok = await apiDeleteRecord(id);
+      if(!ok){ showToast('刪除失敗，請重試'); return; }
+      allRecords = allRecords.filter(r=>r.id!==id);
+      renderAdmin();
+      showToast('已刪除紀錄');
+    });
+  });
 }
 
+document.querySelectorAll('thead th[data-sort]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.sort;
+    if(sortKey===key) sortDir *= -1; else { sortKey=key; sortDir=1; }
+    renderAdmin();
+  });
+});
+[filterOffice, filterCategory, filterCondition].forEach(el=>el.addEventListener('change', renderAdmin));
+document.getElementById('searchBox').addEventListener('input', renderAdmin);
+
+/* ---------------- EXPORT ---------------- */
+function toExportRows(){
+  return getFiltered().map(r=>({
+    '編碼': r.code,
+    '類別': r.categoryName,
+    '辦公室': r.officeName,
+    '品項': r.itemName,
+    '數量': r.qty,
+    '保管人': r.custodian,
+    '地點': r.location||'',
+    '設備狀況': r.condition||'正常使用',
+    '填寫人': r.submittedBy||'',
+    '建立時間': new Date(r.createdAt).toLocaleString('zh-TW',{hour12:false}),
+  }));
+}
+
+document.getElementById('btnExportCsv').addEventListener('click', ()=>{
+  const rows = toExportRows();
+  if(!rows.length){ showToast('目前沒有資料可匯出'); return; }
+  const headers = Object.keys(rows[0]);
+  const csv = [headers.join(',')].concat(
+    rows.map(r=>headers.map(h=>`"${String(r[h]).replace(/"/g,'""')}"`).join(','))
+  ).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `物資盤點_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV 已匯出');
+});
+
+document.getElementById('btnExportXlsx').addEventListener('click', ()=>{
+  const rows = toExportRows();
+  if(!rows.length){ showToast('目前沒有資料可匯出'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:16},{wch:10},{wch:20},{wch:16},{wch:8},{wch:12},{wch:20}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '盤點資料');
+  XLSX.writeFile(wb, `物資盤點_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('Excel 已匯出');
+});
+
+/* ---------------- TOAST ---------------- */
+let toastTimer;
 function showToast(msg){
   const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2400);
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2400);
 }
+
+/* ---------------- INIT ---------------- */
+loadAndRenderAdmin();
 </script>
 </body>
 </html>
