@@ -1,3 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多辦公室物資盤點系統</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#1F2D2A;
+    --ink-soft:#4B5A56;
+    --muted:#8A9591;
+    --paper:#F2F5F3;
+    --card:#FFFFFF;
+    --line:#DFE6E2;
+    --teal:#2F7C6E;
+    --teal-dark:#1F5C51;
+    --teal-light:#E6F1EE;
+    --amber:#DE9A4C;
+    --amber-light:#FBEEDD;
+    --red:#C1543F;
+    --red-light:#FBECE9;
+    --radius:14px;
+    --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', 'Heiti TC', 'Noto Sans TC', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--sans);
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:1080px;margin:0 auto;padding:20px 16px 80px;}
 
   /* Header */
   .topbar{
@@ -1130,12 +1166,39 @@ document.getElementById('btnExportCsv').addEventListener('click', ()=>{
 document.getElementById('btnExportXlsx').addEventListener('click', ()=>{
   const rows = toExportRows();
   if(!rows.length){ showToast('目前沒有資料可匯出'); return; }
-  const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{wch:16},{wch:10},{wch:20},{wch:16},{wch:8},{wch:12},{wch:20}];
+  const colWidths = [{wch:16},{wch:10},{wch:20},{wch:16},{wch:8},{wch:12},{wch:16},{wch:14},{wch:10},{wch:20}];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '盤點資料');
+
+  // 總表：包含全部（篩選後）資料
+  const wsTotal = XLSX.utils.json_to_sheet(rows);
+  wsTotal['!cols'] = colWidths;
+  XLSX.utils.book_append_sheet(wb, wsTotal, '總表');
+
+  // 依辦公室分組，各自建立一個分頁
+  const byOffice = {};
+  rows.forEach(r=>{
+    const office = r['辦公室'] || '未分類';
+    if(!byOffice[office]) byOffice[office] = [];
+    byOffice[office].push(r);
+  });
+  const usedNames = new Set(['總表']);
+  Object.keys(byOffice).forEach(office=>{
+    // Excel分頁名稱限制：最多31字元，不能包含 : \ / ? * [ ]
+    let sheetName = office.replace(/[:\\\/\?\*\[\]]/g, '').slice(0,31);
+    if(!sheetName) sheetName = '未分類';
+    let finalName = sheetName;
+    let dupIdx = 1;
+    while(usedNames.has(finalName)){
+      finalName = sheetName.slice(0, 28) + '_' + (++dupIdx);
+    }
+    usedNames.add(finalName);
+    const ws = XLSX.utils.json_to_sheet(byOffice[office]);
+    ws['!cols'] = colWidths;
+    XLSX.utils.book_append_sheet(wb, ws, finalName);
+  });
+
   XLSX.writeFile(wb, `物資盤點_${new Date().toISOString().slice(0,10)}.xlsx`);
-  showToast('Excel 已匯出');
+  showToast(`Excel 已匯出（總表 + ${Object.keys(byOffice).length} 個辦公室分頁）`);
 });
 
 /* ---------------- TOAST ---------------- */
